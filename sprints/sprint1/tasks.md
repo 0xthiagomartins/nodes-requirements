@@ -1,10 +1,11 @@
 # Sprint 1 Tasks
 
 ## Backend Setup
-- 🔴 Initialize Rust project with Cargo
-- 🔴 Configure Actix Web framework
-- 🔴 Set up SQLite with SQLx
-- 🔴 Create database migration for nodes table
+- 🟢 Initialize Rust project with Cargo
+- 🟢 Configure Actix Web framework
+- 🟢 Set up SQLite with SQLx
+- 🟢 Create database migration for nodes table
+- 🟢 Create setup script for development environment
 
 ## Frontend Setup
 - 🔴 Create Next.js project
@@ -13,7 +14,7 @@
 - 🔴 Create basic project structure
 
 ## API Development
-- 🔴 Implement GET /nodes endpoint
+- 🟡 Implement GET /nodes endpoint
 - 🔴 Implement GET /nodes/{id} endpoint
 - 🔴 Add basic error handling
 - 🔴 Create API documentation
