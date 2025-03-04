@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, post, put};
+use actix_web::{web, HttpResponse, post, put, delete};
 use sqlx::SqlitePool;
 use validator::Validate;
 
@@ -13,6 +13,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{id}", web::get().to(get_node))
             .service(create_node)
             .service(update_node)
+            .service(delete_node)
     );
 }
 
@@ -60,4 +61,13 @@ async fn update_node(
     update.validate()?;
     let updated = db::nodes::update_node(&pool, id.into_inner(), update.into_inner()).await?;
     Ok(HttpResponse::Ok().json(&updated))
+}
+
+#[delete("/{id}")]
+async fn delete_node(
+    id: web::Path<i64>,
+    pool: web::Data<SqlitePool>,
+) -> Result<HttpResponse, AppError> {
+    db::nodes::delete_node(&pool, id.into_inner()).await?;
+    Ok(HttpResponse::NoContent().finish())
 } 

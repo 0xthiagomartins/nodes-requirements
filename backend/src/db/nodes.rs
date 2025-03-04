@@ -147,4 +147,19 @@ pub async fn update_node(
         created_at: updated.created_at,
         updated_at: updated.updated_at,
     })
+}
+
+pub async fn delete_node(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
+    let result = sqlx::query!(
+        "DELETE FROM nodes WHERE id = ?",
+        id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Node not found".to_string()));
+    }
+
+    Ok(())
 } 

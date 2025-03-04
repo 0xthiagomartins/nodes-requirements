@@ -137,4 +137,38 @@ async fn test_update_node_partial() {
     assert_eq!(node.network_mbps, inserted_node.network_mbps);
 }
 
+#[actix_rt::test]
+async fn test_delete_node_success() {
+    let (app, pool) = common::setup_test_app().await;
+    
+    // Insert a test node first
+    let inserted_node = common::insert_test_node(&pool).await;
+    
+    let req = test::TestRequest::delete()
+        .uri(&format!("/nodes/{}", inserted_node.id))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    
+    assert!(resp.status().is_success(), "Response status: {}", resp.status());
+
+    // Verify node was deleted
+    let req = test::TestRequest::get()
+        .uri(&format!("/nodes/{}", inserted_node.id))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), 404);
+}
+
+#[actix_rt::test]
+async fn test_delete_node_not_found() {
+    let (app, _pool) = common::setup_test_app().await;
+    
+    let req = test::TestRequest::delete()
+        .uri("/nodes/999")
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    
+    assert_eq!(resp.status(), 404);
+}
+
 // ... other tests ... 

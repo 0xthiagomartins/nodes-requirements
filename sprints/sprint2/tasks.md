@@ -9,9 +9,9 @@
   - ✅ Validate request body
   - ✅ Handle non-existent nodes
   - ✅ Return updated node
-- 🔴 Implement DELETE /nodes/{id} endpoint
-  - Handle cascade deletion with price history
-  - Return success status
+- 🟡 Implement DELETE /nodes/{id} endpoint
+  - 🟡 Handle cascade deletion with price history (pending price history table)
+  - ✅ Return success status
 
 ## Price History Integration
 - 🔴 Create price fetcher service
@@ -47,7 +47,7 @@
 ## Testing & Documentation
 - ✅ Write tests for POST /nodes
 - ✅ Write tests for PUT /nodes
-- 🔴 Write tests for DELETE /nodes
+- ✅ Write tests for DELETE /nodes
 - 🟢 Organize test structure
   - ✅ Move integration tests to /tests
   - ✅ Create common test utilities
