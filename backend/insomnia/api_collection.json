@@ -1,0 +1,266 @@
+{
+    "_type": "export",
+    "__export_format": 4,
+    "__export_date": "2024-03-19T12:00:00.000Z",
+    "__export_source": "insomnia.desktop.app:v8.5.1",
+    "resources": [
+        {
+            "_id": "workspace",
+            "name": "Node Price Tracker API",
+            "description": "API collection for Node Price Tracker",
+            "_type": "workspace",
+            "parentId": null
+        },
+        {
+            "_id": "env_base",
+            "name": "Base Environment",
+            "data": {
+                "backend_url": "http://localhost:8080",
+                "gcp_url": "https://cloudbilling.googleapis.com",
+                "gcp_api_key": "{{ GCP_API_KEY }}",
+                "gcp_project_id": "{{ GCP_PROJECT_ID }}",
+                "gcp_billing_account": "{{ GCP_BILLING_ACCOUNT }}"
+            },
+            "_type": "environment",
+            "parentId": "workspace"
+        },
+        {
+            "_id": "folder_backend",
+            "name": "Backend API",
+            "_type": "request_group",
+            "parentId": "workspace"
+        },
+        {
+            "_id": "folder_nodes",
+            "name": "Nodes",
+            "_type": "request_group",
+            "parentId": "folder_backend"
+        },
+        {
+            "_id": "get_nodes",
+            "name": "List Nodes",
+            "url": "{{ backend_url }}/nodes",
+            "method": "GET",
+            "_type": "request",
+            "parentId": "folder_nodes"
+        },
+        {
+            "_id": "get_node",
+            "name": "Get Node",
+            "url": "{{ backend_url }}/nodes/{{node_id}}",
+            "method": "GET",
+            "_type": "request",
+            "parentId": "folder_nodes"
+        },
+        {
+            "_id": "create_node",
+            "name": "Create Node",
+            "url": "{{ backend_url }}/nodes",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"blockchain_type\": \"ethereum\",\n  \"cpu_cores\": 4,\n  \"ram_gb\": 8,\n  \"storage_gb\": 500,\n  \"network_mbps\": 1000\n}"
+            },
+            "_type": "request",
+            "parentId": "folder_nodes"
+        },
+        {
+            "_id": "update_node",
+            "name": "Update Node",
+            "url": "{{ backend_url }}/nodes/{{node_id}}",
+            "method": "PUT",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"cpu_cores\": 8,\n  \"ram_gb\": 16\n}"
+            },
+            "_type": "request",
+            "parentId": "folder_nodes"
+        },
+        {
+            "_id": "delete_node",
+            "name": "Delete Node",
+            "url": "{{ backend_url }}/nodes/{{node_id}}",
+            "method": "DELETE",
+            "_type": "request",
+            "parentId": "folder_nodes"
+        },
+        {
+            "_id": "folder_prices",
+            "name": "Price History",
+            "_type": "request_group",
+            "parentId": "folder_backend"
+        },
+        {
+            "_id": "get_node_prices",
+            "name": "Get Node Prices",
+            "url": "{{ backend_url }}/nodes/{{node_id}}/prices",
+            "method": "GET",
+            "_type": "request",
+            "parentId": "folder_prices"
+        },
+        {
+            "_id": "get_latest_prices",
+            "name": "Get Latest Prices",
+            "url": "{{ backend_url }}/nodes/{{node_id}}/prices/latest",
+            "method": "GET",
+            "_type": "request",
+            "parentId": "folder_prices"
+        },
+        {
+            "_id": "create_price",
+            "name": "Create Price",
+            "url": "{{ backend_url }}/nodes/{{node_id}}/prices",
+            "method": "POST",
+            "body": {
+                "mimeType": "application/json",
+                "text": "{\n  \"provider\": \"gcp\",\n  \"price_per_hour\": 1.25,\n  \"currency\": \"USD\"\n}"
+            },
+            "_type": "request",
+            "parentId": "folder_prices"
+        },
+        {
+            "_id": "folder_gcp",
+            "name": "GCP Pricing API",
+            "_type": "request_group",
+            "parentId": "workspace"
+        },
+        {
+            "_id": "folder_gcp_public",
+            "name": "GCP Public Pricing API (v2beta)",
+            "_type": "request_group",
+            "parentId": "workspace"
+        },
+        {
+            "_id": "list_public_services",
+            "name": "List Public Services",
+            "url": "{{ gcp_url }}/v2beta/services",
+            "method": "GET",
+            "params": [
+                {
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}"
+                },
+                {
+                    "name": "pageSize",
+                    "value": "50"
+                }
+            ],
+            "_type": "request",
+            "parentId": "folder_gcp_public"
+        },
+        {
+            "_id": "get_public_service",
+            "name": "Get Public Service",
+            "url": "{{ gcp_url }}/v2beta/services/6F81-5844-456A",
+            "method": "GET",
+            "params": [
+                {
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}"
+                }
+            ],
+            "_type": "request",
+            "parentId": "folder_gcp_public"
+        },
+        {
+            "_id": "list_public_skus",
+            "name": "List Public SKUs",
+            "url": "{{ gcp_url }}/v2beta/skus",
+            "method": "GET",
+            "params": [
+                {
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}"
+                },
+                {
+                    "name": "filter",
+                    "value": "serviceId:6F81-5844-456A"
+                },
+                {
+                    "name": "pageSize",
+                    "value": "50"
+                }
+            ],
+            "_type": "request",
+            "parentId": "folder_gcp_public"
+        },
+        {
+            "_id": "folder_gcp_billing",
+            "name": "GCP Billing Account API (v1beta)",
+            "_type": "request_group",
+            "parentId": "workspace"
+        },
+        {
+            "_id": "list_billing_skus",
+            "name": "List Billing Account SKUs",
+            "url": "{{ gcp_url }}/v1beta/billingAccounts/{{ gcp_billing_account }}/skus",
+            "method": "GET",
+            "params": [
+                {
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}"
+                },
+                {
+                    "name": "pageSize",
+                    "value": "50"
+                }
+            ],
+            "_type": "request",
+            "parentId": "folder_gcp_billing"
+        },
+        {
+            "_id": "get_sku_price",
+            "name": "Get SKU Price",
+            "url": "{{ gcp_url }}/v1beta/billingAccounts/{{ gcp_billing_account }}/skus/{skuId}/price",
+            "method": "GET",
+            "params": [
+                {
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}"
+                },
+                {
+                    "name": "currencyCode",
+                    "value": "USD"
+                }
+            ],
+            "_type": "request",
+            "parentId": "folder_gcp_billing"
+        },
+        {
+            "_id": "list_sku_groups",
+            "name": "List SKU Groups",
+            "url": "{{ gcp_url }}/v1beta/billingAccounts/{{ gcp_billing_account }}/skuGroups",
+            "method": "GET",
+            "params": [
+                {
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}"
+                },
+                {
+                    "name": "pageSize",
+                    "value": "50"
+                }
+            ],
+            "_type": "request",
+            "parentId": "folder_gcp_billing"
+        },
+        {
+            "_id": "list_group_skus",
+            "name": "List SKUs in Group",
+            "url": "{{ gcp_url }}/v1beta/billingAccounts/{{ gcp_billing_account }}/skuGroups/{groupId}/skus",
+            "method": "GET",
+            "params": [
+                {
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}"
+                },
+                {
+                    "name": "pageSize",
+                    "value": "50"
+                }
+            ],
+            "_type": "request",
+            "parentId": "folder_gcp_billing"
+        }
+    ]
+}
