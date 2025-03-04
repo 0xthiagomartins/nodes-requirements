@@ -1,29 +1,45 @@
 use actix_web::{HttpResponse, ResponseError};
-use derive_more::Display;
-use serde::Serialize;
+use serde_json::json;
+use thiserror::Error;
+use validator::ValidationErrors;
 
-#[derive(Debug, Display, Serialize)]
-#[serde(tag = "type", content = "message")]
+#[derive(Debug, Error)]
 pub enum AppError {
-    #[display(fmt = "Internal Server Error")]
+    #[error("Internal server error")]
     InternalServerError,
 
-    #[display(fmt = "Not Found")]
-    NotFound,
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
 
-    #[display(fmt = "Bad Request: {}", _0)]
-    BadRequest(String),
+    #[error("Validation error: {0}")]
+    Validation(#[from] ValidationErrors),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
 }
 
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            AppError::InternalServerError => {
-                log::error!("Internal server error occurred");
-                HttpResponse::InternalServerError().json(self)
-            }
-            AppError::NotFound => HttpResponse::NotFound().json(self),
-            AppError::BadRequest(msg) => HttpResponse::BadRequest().json(self),
+            AppError::InternalServerError => HttpResponse::InternalServerError().json(json!({
+                "error": "Internal server error"
+            })),
+            AppError::Database(_) => HttpResponse::InternalServerError().json(json!({
+                "error": "Database error"
+            })),
+            AppError::Validation(err) => HttpResponse::BadRequest().json(json!({
+                "error": "Validation error",
+                "details": err.to_string()
+            })),
+            AppError::NotFound(msg) => HttpResponse::NotFound().json(json!({
+                "error": msg
+            })),
+            AppError::Conflict(msg) => HttpResponse::Conflict().json(json!({
+                "error": msg
+            })),
         }
     }
 }

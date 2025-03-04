@@ -3,10 +3,12 @@ use actix_cors::Cors;
 use sqlx::sqlite::SqlitePool;
 use dotenv::dotenv;
 
-mod routes;
-mod models;
 mod db;
 mod error;
+mod models;
+mod routes;
+
+pub use crate::error::AppError;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -34,7 +36,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(pool.clone()))
-            .service(routes::nodes::config())
+            .configure(routes::nodes::config)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

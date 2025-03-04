@@ -1,5 +1,7 @@
 use sqlx::SqlitePool;
-use crate::models::{Node, CreateNodeRequest, UpdateNodeRequest};
+use chrono::{DateTime, Utc};
+
+use crate::models::{Node, CreateNodeRequest, UpdateNodeRequest};  // Import from models
 use crate::error::AppError;
 
 pub async fn create_node(pool: &SqlitePool, node: CreateNodeRequest) -> Result<Node, AppError> {
@@ -25,7 +27,14 @@ pub async fn create_node(pool: &SqlitePool, node: CreateNodeRequest) -> Result<N
         r#"
         INSERT INTO nodes (blockchain_type, cpu_cores, ram_gb, storage_gb, network_mbps)
         VALUES (?, ?, ?, ?, ?)
-        RETURNING *
+        RETURNING 
+            id, blockchain_type,
+            cpu_cores as "cpu_cores: i32",
+            ram_gb as "ram_gb: i32",
+            storage_gb as "storage_gb: i32",
+            network_mbps as "network_mbps: i32",
+            created_at as "created_at!: DateTime<Utc>",
+            updated_at as "updated_at!: DateTime<Utc>"
         "#,
         node.blockchain_type,
         node.cpu_cores,
@@ -45,10 +54,24 @@ pub async fn update_node(
     update: UpdateNodeRequest,
 ) -> Result<Node, AppError> {
     // Check if node exists
-    let node = sqlx::query_as!(Node, "SELECT * FROM nodes WHERE id = ?", id)
-        .fetch_optional(pool)
-        .await?
-        .ok_or_else(|| AppError::NotFound(format!("Node with id {} not found", id)))?;
+    let _existing = sqlx::query_as!(
+        Node,
+        r#"
+        SELECT 
+            id, blockchain_type,
+            cpu_cores as "cpu_cores: i32",
+            ram_gb as "ram_gb: i32",
+            storage_gb as "storage_gb: i32",
+            network_mbps as "network_mbps: i32",
+            created_at as "created_at!: DateTime<Utc>",
+            updated_at as "updated_at!: DateTime<Utc>"
+        FROM nodes 
+        WHERE id = ?
+        "#,
+        id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     // Check for duplicate blockchain type if it's being updated
     if let Some(blockchain_type) = &update.blockchain_type {
@@ -70,26 +93,55 @@ pub async fn update_node(
     }
 
     // Build update query dynamically
-    let mut query = String::from("UPDATE nodes SET ");
+    let mut query = String::from(
+        r#"
+        UPDATE nodes SET 
+        "#
+    );
     let mut params = Vec::new();
     
     if let Some(blockchain_type) = update.blockchain_type {
         query.push_str("blockchain_type = ?, ");
-        params.push(blockchain_type);
+        params.push(blockchain_type.to_string());
     }
     if let Some(cpu_cores) = update.cpu_cores {
         query.push_str("cpu_cores = ?, ");
         params.push(cpu_cores.to_string());
     }
-    // ... similar for other fields ...
+    if let Some(ram_gb) = update.ram_gb {
+        query.push_str("ram_gb = ?, ");
+        params.push(ram_gb.to_string());
+    }
+    if let Some(storage_gb) = update.storage_gb {
+        query.push_str("storage_gb = ?, ");
+        params.push(storage_gb.to_string());
+    }
+    if let Some(network_mbps) = update.network_mbps {
+        query.push_str("network_mbps = ?, ");
+        params.push(network_mbps.to_string());
+    }
 
-    query.push_str("updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *");
+    query.push_str(
+        r#"
+        updated_at = CURRENT_TIMESTAMP 
+        WHERE id = ? 
+        RETURNING 
+            id, blockchain_type,
+            cpu_cores as "cpu_cores: i32",
+            ram_gb as "ram_gb: i32",
+            storage_gb as "storage_gb: i32",
+            network_mbps as "network_mbps: i32",
+            created_at as "created_at!: DateTime<Utc>",
+            updated_at as "updated_at!: DateTime<Utc>"
+        "#
+    );
     params.push(id.to_string());
 
-    let node = sqlx::query_as::<_, Node>(&query)
-        .bind_all(params)
-        .fetch_one(pool)
-        .await?;
+    let mut query = sqlx::query_as::<_, Node>(&query);
+    for param in params {
+        query = query.bind(param);
+    }
+    let node = query.fetch_one(pool).await?;
 
     Ok(node)
 } 

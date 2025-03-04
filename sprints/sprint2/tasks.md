@@ -49,6 +49,9 @@
   - ✅ POST /nodes tests
   - 🔴 PUT /nodes tests
   - 🔴 DELETE /nodes tests
+- 🟢 Organize test structure
+  - ✅ Move integration tests to /tests
+  - ✅ Create common test utilities
 - 🔴 Create Insomnia collection for API testing
 - 🔴 Document API endpoints
 - 🔴 Add example requests and responses 
