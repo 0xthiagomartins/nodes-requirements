@@ -135,14 +135,18 @@
             "name": "List Public Services",
             "url": "{{ gcp_url }}/v2beta/services",
             "method": "GET",
-            "params": [
+            "parameters": [
                 {
+                    "id": "pair_1",
                     "name": "key",
-                    "value": "{{ gcp_api_key }}"
+                    "value": "{{ gcp_api_key }}",
+                    "description": "GCP API Key"
                 },
                 {
+                    "id": "pair_2",
                     "name": "pageSize",
-                    "value": "50"
+                    "value": "50",
+                    "description": "Number of results per page"
                 }
             ],
             "_type": "request",
@@ -151,14 +155,8 @@
         {
             "_id": "get_public_service",
             "name": "Get Public Service",
-            "url": "{{ gcp_url }}/v2beta/services/6F81-5844-456A",
+            "url": "{{ gcp_url }}/v2beta/services/6F81-5844-456A?key={{ gcp_api_key }}",
             "method": "GET",
-            "params": [
-                {
-                    "name": "key",
-                    "value": "{{ gcp_api_key }}"
-                }
-            ],
             "_type": "request",
             "parentId": "folder_gcp_public"
         },
@@ -167,18 +165,24 @@
             "name": "List Public SKUs",
             "url": "{{ gcp_url }}/v2beta/skus",
             "method": "GET",
-            "params": [
+            "parameters": [
                 {
+                    "id": "pair_1",
                     "name": "key",
-                    "value": "{{ gcp_api_key }}"
+                    "value": "{{ gcp_api_key }}",
+                    "description": "GCP API Key"
                 },
                 {
+                    "id": "pair_2",
                     "name": "filter",
-                    "value": "serviceId:6F81-5844-456A"
+                    "value": "serviceId:6F81-5844-456A",
+                    "description": "Filter by Compute Engine service"
                 },
                 {
+                    "id": "pair_3",
                     "name": "pageSize",
-                    "value": "50"
+                    "value": "50",
+                    "description": "Number of results per page"
                 }
             ],
             "_type": "request",
@@ -261,6 +265,35 @@
             ],
             "_type": "request",
             "parentId": "folder_gcp_billing"
+        },
+        {
+            "_id": "list_sku_prices",
+            "name": "List SKU Prices",
+            "url": "{{ gcp_url }}/v1beta/skus/-/prices",
+            "method": "GET",
+            "parameters": [
+                {
+                    "id": "pair_1",
+                    "name": "key",
+                    "value": "{{ gcp_api_key }}",
+                    "description": "GCP API Key"
+                },
+                {
+                    "id": "pair_2",
+                    "name": "pageSize",
+                    "value": "50",
+                    "description": "Maximum number of prices to return (max: 5000)"
+                },
+                {
+                    "id": "pair_3",
+                    "name": "currencyCode",
+                    "value": "USD",
+                    "description": "ISO-4217 currency code (default: USD)"
+                }
+            ],
+            "description": "Lists the latest prices for all SKUs. Use '-' as SKU ID to get all prices.",
+            "_type": "request",
+            "parentId": "folder_gcp_public"
         }
     ]
 }

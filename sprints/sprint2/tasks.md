@@ -14,9 +14,9 @@
   - ✅ Return success status
 
 ## Price History Integration 🟡
-- 🔴 Create price fetcher service
-  - 🔴 Implement GCP price fetching
-  - 🔴 Implement Hetzner price fetching
+- 🟡 Create price fetcher service
+  - 🟡 Implement GCP price fetching (structure created)
+  - 🟡 Implement Hetzner price fetching (structure created)
 - 🔴 Add scheduled price updates
   - 🔴 Set up background task system
   - 🔴 Configure update intervals
