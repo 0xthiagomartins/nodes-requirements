@@ -8,14 +8,4 @@ CREATE TABLE IF NOT EXISTS nodes (
     network_mbps INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create price_history table
-CREATE TABLE IF NOT EXISTS price_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    provider TEXT NOT NULL,
-    node_id INTEGER NOT NULL,
-    price_usd DECIMAL(10,2) NOT NULL,
-    recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(node_id) REFERENCES nodes(id)
 ); 
