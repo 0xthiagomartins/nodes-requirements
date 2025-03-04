@@ -19,6 +19,7 @@ chrono = { version = "0.4", features = ["serde"] }
 env_logger = "0.10"
 log = "0.4"
 derive_more = "0.99"
+validator = { version = "0.16", features = ["derive"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
