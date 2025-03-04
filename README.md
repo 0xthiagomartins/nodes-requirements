@@ -14,10 +14,7 @@ A comprehensive tool for comparing hardware requirements across different blockc
 │ ├── src/ # Source code
 │ ├── components/ # Reusable UI components
 │ └── tests/ # Frontend tests
-└── sprints/ # Sprint planning and tracking
-├── sprint1/ # Current sprint
-├── sprint2/ # Next sprint
-└── docs/ # Sprint documentation
+└── README.md # Project documentation
 ```
 
 ## Directory Overview
