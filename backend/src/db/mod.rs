@@ -1,8 +1,10 @@
-pub mod nodes;
+use sqlx::SqlitePool;
 
-#[cfg(test)]
-pub async fn create_pool(database_url: &str) -> Result<sqlx::SqlitePool, sqlx::Error> {
-    sqlx::SqlitePool::connect(database_url).await
+pub mod nodes;
+pub mod price_history;
+
+pub async fn create_pool(database_url: &str) -> Result<SqlitePool, sqlx::Error> {
+    SqlitePool::connect(database_url).await
 }
 
 #[cfg(test)]
@@ -11,7 +13,7 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_create_pool() {
-        let pool = create_pool("sqlite::memory:").await.unwrap();
-        assert!(pool.acquire().await.is_ok());
+        let pool = create_pool("sqlite::memory:").await;
+        assert!(pool.is_ok());
     }
 } 

@@ -1,22 +1,25 @@
-use actix_web::{web, HttpResponse, post, put, delete};
+use actix_web::{web, HttpResponse, get, post, put, delete};
 use sqlx::SqlitePool;
 use validator::Validate;
 
 use crate::models::{Node, CreateNodeRequest, UpdateNodeRequest};
 use crate::error::AppError;
 use crate::db;
+use crate::routes::price_history;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/nodes")
-            .route("", web::get().to(get_nodes))
-            .route("/{id}", web::get().to(get_node))
+            .service(get_nodes)
+            .service(get_node)
             .service(create_node)
             .service(update_node)
             .service(delete_node)
+            .configure(price_history::config)
     );
 }
 
+#[get("")]
 async fn get_nodes(pool: web::Data<SqlitePool>) -> Result<HttpResponse, AppError> {
     let nodes = sqlx::query_as::<_, Node>("SELECT * FROM nodes")
         .fetch_all(pool.get_ref())
@@ -26,6 +29,7 @@ async fn get_nodes(pool: web::Data<SqlitePool>) -> Result<HttpResponse, AppError
     Ok(HttpResponse::Ok().json(nodes))
 }
 
+#[get("/{id}")]
 async fn get_node(
     id: web::Path<i64>,
     pool: web::Data<SqlitePool>,

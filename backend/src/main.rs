@@ -1,7 +1,7 @@
 use actix_web::{web, App, HttpServer};
 use actix_cors::Cors;
-use sqlx::sqlite::SqlitePool;
 use dotenv::dotenv;
+use std::fs;
 
 mod db;
 mod error;
@@ -16,13 +16,21 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init();
     
+    // Ensure database directory exists
+    fs::create_dir_all("db").expect("Failed to create database directory");
+    
     // Database connection
     let database_url = std::env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    
-    let pool = SqlitePool::connect(&database_url)
+        .unwrap_or_else(|_| "sqlite:db/app.db".to_string());
+    let pool = db::create_pool(&database_url)
         .await
-        .expect("Failed to create pool");
+        .expect("Failed to create database pool");
+
+    // Run migrations
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Failed to run database migrations");
 
     println!("Starting server at http://localhost:8080");
 
@@ -37,6 +45,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .app_data(web::Data::new(pool.clone()))
             .configure(routes::nodes::config)
+            .configure(routes::price_history::config)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

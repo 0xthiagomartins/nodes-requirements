@@ -10,32 +10,39 @@
   - ✅ Handle non-existent nodes
   - ✅ Return updated node
 - ✅ Implement DELETE /nodes/{id} endpoint
-  - 🟡 Handle cascade deletion with price history (pending price history table)
+  - ✅ Handle cascade deletion with price history (now implemented with ON DELETE CASCADE)
   - ✅ Return success status
 
-## Price History Integration 🔴
+## Price History Integration 🟡
 - 🔴 Create price fetcher service
   - 🔴 Implement GCP price fetching
   - 🔴 Implement Hetzner price fetching
 - 🔴 Add scheduled price updates
   - 🔴 Set up background task system
   - 🔴 Configure update intervals
-- 🔴 Create price history endpoints
-  - 🔴 GET /nodes/{id}/prices
-  - 🔴 GET /nodes/{id}/prices/latest
+- ✅ Create price history endpoints
+  - ✅ GET /nodes/{id}/prices
+  - ✅ GET /nodes/{id}/prices/latest
+  - ✅ POST /nodes/{id}/prices
 
 ## Database ✅
 - ✅ Create price history table migration
   - ✅ Define table schema
   - ✅ Add foreign key relationship
 - 🔴 Create API keys table migration
-- 🔴 Implement database models
+- 🟡 Implement database models
+  - ✅ Price history models
+  - 🔴 API key models
 - ✅ Add database connection pooling
 
 ## Testing & Documentation ✅
 - ✅ Write tests for POST /nodes
 - ✅ Write tests for PUT /nodes
 - ✅ Write tests for DELETE /nodes
+- ✅ Write tests for price history endpoints
+  - ✅ POST /nodes/{id}/prices
+  - ✅ GET /nodes/{id}/prices
+  - ✅ GET /nodes/{id}/prices/latest
 - ✅ Organize test structure
   - ✅ Move integration tests to /tests
   - ✅ Create common test utilities
