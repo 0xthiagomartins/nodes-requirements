@@ -1,10 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Node } from "@/types/node"
+import { fetchApi } from "@/lib/api"
 
 async function getNodes() {
-    const res = await fetch('http://localhost:8080/nodes')
-    if (!res.ok) throw new Error('Failed to fetch nodes')
-    return res.json()
+    return fetchApi<Node[]>('/nodes')
 }
 
 export async function NodesList() {

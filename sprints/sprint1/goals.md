@@ -8,7 +8,7 @@ Duration: 2 weeks
 4. Design database schema
 
 ## Deliverables
-- [ ] Rust project with Actix Web
-- [ ] SQLite database setup with initial schema
-- [ ] Basic CRUD endpoints for nodes
-- [ ] Next.js project with Tailwind CSS 
+- [x] Rust project with Actix Web
+- [x] SQLite database setup with initial schema
+- [x] Basic CRUD endpoints for nodes
+- [x] Next.js project with Tailwind CSS 

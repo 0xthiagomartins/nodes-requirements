@@ -9,9 +9,9 @@
 
 ## Frontend Setup
 - 🟢 Create Next.js project
-- 🔴 Install and configure Tailwind CSS
-- 🔴 Set up Material Design framework
-- 🔴 Create basic project structure
+- 🟢 Install and configure Tailwind CSS (done via create-next-app)
+- 🟢 Set up Material Design framework (done via shadcn/ui)
+- 🟢 Create basic project structure (partially done)
 
 ## API Development
 - 🟢 Implement GET /nodes endpoint
@@ -23,4 +23,3 @@
 - 🟢 Set up testing framework for Rust
 - 🟢 Write initial unit tests
 - 🟢 Configure API testing tools (Insomnia)
-- 🔴 Configure frontend testing tools
