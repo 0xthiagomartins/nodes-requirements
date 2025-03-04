@@ -1,0 +1,69 @@
+{
+    "_type": "export",
+    "__export_format": 4,
+    "__export_date": "2024-03-18T10:00:00.000Z",
+    "__export_source": "insomnia.desktop.app:v8.5.1",
+    "resources": [
+        {
+            "_id": "req_nodes_list",
+            "parentId": "fld_nodes",
+            "modified": 1710748800000,
+            "created": 1710748800000,
+            "url": "{{ _.base_url }}/nodes",
+            "name": "List Nodes",
+            "description": "Get all miner nodes",
+            "method": "GET",
+            "headers": [],
+            "params": [],
+            "authentication": {},
+            "metaSortKey": -1710748800000,
+            "_type": "request"
+        },
+        {
+            "_id": "req_node_by_id",
+            "parentId": "fld_nodes",
+            "modified": 1710748800000,
+            "created": 1710748800000,
+            "url": "{{ _.base_url }}/nodes/1",
+            "name": "Get Node by ID",
+            "description": "Get a specific node by its ID",
+            "method": "GET",
+            "headers": [],
+            "params": [],
+            "authentication": {},
+            "metaSortKey": -1710748700000,
+            "_type": "request"
+        },
+        {
+            "_id": "fld_nodes",
+            "parentId": "wrk_miner_nodes",
+            "modified": 1710748800000,
+            "created": 1710748800000,
+            "name": "Nodes",
+            "description": "Node management endpoints",
+            "environment": {},
+            "_type": "request_group"
+        },
+        {
+            "_id": "wrk_miner_nodes",
+            "parentId": null,
+            "modified": 1710748800000,
+            "created": 1710748800000,
+            "name": "Miner Node Comparison API",
+            "description": "",
+            "scope": "collection",
+            "_type": "workspace"
+        },
+        {
+            "_id": "env_base",
+            "parentId": "wrk_miner_nodes",
+            "modified": 1710748800000,
+            "created": 1710748800000,
+            "name": "Base Environment",
+            "data": {
+                "base_url": "http://localhost:8080"
+            },
+            "_type": "environment"
+        }
+    ]
+}

@@ -24,8 +24,8 @@ cargo install sqlx-cli
 
 2. Set up environment:
 ```bash
-# Run the setup script from project root
-../scripts/setup.sh
+# Run the setup script
+./scripts/setup.sh
 
 # Or manually:
 mkdir -p db
@@ -46,6 +46,22 @@ cargo run
 cargo install cargo-watch
 cargo watch -x run
 ```
+
+### Database Seeding
+
+To populate the database with test data:
+```bash
+# From backend directory
+./scripts/setup.sh --with-test-data
+
+# Or directly with SQLite
+sqlite3 db/app.db < scripts/seed.sql
+```
+
+The test data includes:
+- Various blockchain nodes (Ethereum, Bitcoin, Solana, Cardano)
+- Price history from different providers
+- Historical price changes
 
 ### Database Management
 
@@ -83,6 +99,19 @@ backend/
 - `POST /nodes` - Create new node
 - `PUT /nodes/{id}` - Update node
 - `DELETE /nodes/{id}` - Delete node
+
+## API Testing with Insomnia
+
+1. Install [Insomnia](https://insomnia.rest/download)
+2. Import the collection:
+   - Open Insomnia
+   - Click on `Create` -> `Import from File`
+   - Select `backend/insomnia/insomnia_collection.json`
+
+The collection includes:
+- Environment configuration
+- All API endpoints with examples
+- Request/response documentation
 
 ## Testing
 

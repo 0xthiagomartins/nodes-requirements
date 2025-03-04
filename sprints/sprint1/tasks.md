@@ -14,12 +14,19 @@
 - 🔴 Create basic project structure
 
 ## API Development
-- 🟡 Implement GET /nodes endpoint
-- 🔴 Implement GET /nodes/{id} endpoint
-- 🔴 Add basic error handling
-- 🔴 Create API documentation
+- 🟢 Implement GET /nodes endpoint
+- 🟢 Implement GET /nodes/{id} endpoint
+- 🟢 Add basic error handling
+- 🟢 Create API documentation
 
 ## Testing
-- 🔴 Set up testing framework for Rust
-- 🔴 Write initial unit tests
-- 🔴 Configure frontend testing tools 
+- 🟢 Set up testing framework for Rust
+- 🟢 Write initial unit tests
+- 🟢 Configure API testing tools (Insomnia)
+- 🔴 Configure frontend testing tools
+
+## Frontend Setup
+- 🔴 Create Next.js project
+- 🔴 Install and configure Tailwind CSS
+- 🔴 Set up Material Design framework
+- 🔴 Create basic project structure 

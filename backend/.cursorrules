@@ -1,0 +1,101 @@
+# Backend Project Rules and Guidelines
+# This file provides guidance for maintaining the Miner Node Comparison backend
+
+project:
+  name: "Miner Node Comparison Backend"
+  tech_stack:
+    - Rust
+    - Actix-web
+    - SQLx
+    - SQLite
+  structure:
+    src/:
+      - main.rs: "Application entry point and server configuration"
+      - routes/: "API endpoint handlers and route configuration"
+      - models/: "Data structures and database schemas"
+      - db/: "Database interactions and queries"
+      - error/: "Error handling and custom error types"
+    migrations/: "Database migration files (ordered by timestamp)"
+    scripts/: "Development and maintenance scripts"
+    tests/: "Integration and unit tests"
+
+conventions:
+  code_style:
+    - "Use `cargo fmt` before committing"
+    - "Run `cargo clippy` to catch common mistakes"
+    - "Follow Rust naming conventions (snake_case for functions, CamelCase for types)"
+    - "Document public functions and modules with rustdoc comments"
+
+  error_handling:
+    - "Use custom AppError types from error/mod.rs"
+    - "Propagate errors with '?' operator when possible"
+    - "Log errors appropriately using log::error! macro"
+    - "Return structured error responses to clients"
+
+  database:
+    - "Always use migrations for schema changes"
+    - "Test migrations both up and down"
+    - "Use SQLx compile-time query checking"
+    - "Keep migrations idempotent"
+    - "Include timestamp prefix in migration files (YYYYMMDDHHMMSS)"
+
+  testing:
+    - "Write unit tests for all public functions"
+    - "Use in-memory SQLite for tests"
+    - "Seed test data using test_utils.rs helpers"
+    - "Mock external dependencies when necessary"
+    - "Test both success and error cases"
+
+development_workflow:
+  setup:
+    - "Run ./scripts/setup.sh for initial setup"
+    - "Use --with-test-data flag for development data"
+    - "Ensure .env file exists with correct DATABASE_URL"
+
+  database:
+    - "Run migrations with: sqlx migrate run"
+    - "Create new migration: sqlx migrate add <name>"
+    - "Reset database: sqlx database reset"
+
+  testing:
+    - "Run tests: cargo test"
+    - "Run specific test: cargo test <test_name>"
+    - "Use RUST_LOG=debug for verbose test output"
+
+api_guidelines:
+  - "Document all endpoints in api-docs.yaml (OpenAPI)"
+  - "Use appropriate HTTP methods and status codes"
+  - "Validate request inputs"
+  - "Return consistent error formats"
+  - "Version breaking changes"
+
+maintenance:
+  dependencies:
+    - "Keep dependencies updated using cargo update"
+    - "Review security advisories regularly"
+    - "Test thoroughly after dependency updates"
+
+  monitoring:
+    - "Use RUST_LOG environment variable for log levels"
+    - "Check logs for error patterns"
+    - "Monitor database performance"
+
+security:
+  - "Never commit .env files or sensitive data"
+  - "Validate all user inputs"
+  - "Use prepared statements for SQL queries"
+  - "Keep dependencies updated for security patches"
+  - "Follow OWASP security guidelines"
+
+troubleshooting:
+  common_issues:
+    database_connection:
+      - "Check DATABASE_URL in .env"
+      - "Ensure database file exists"
+      - "Verify migrations are up to date"
+
+    build_failures:
+      - "Run cargo clean and rebuild"
+      - "Check for missing dependencies"
+      - "Verify SQLx offline mode if needed"
+# Add new rules and guidelines as the project evolves
