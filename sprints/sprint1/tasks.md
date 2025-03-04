@@ -8,7 +8,7 @@
 - 🟢 Create setup script for development environment
 
 ## Frontend Setup
-- 🔴 Create Next.js project
+- 🟢 Create Next.js project
 - 🔴 Install and configure Tailwind CSS
 - 🔴 Set up Material Design framework
 - 🔴 Create basic project structure
@@ -24,9 +24,3 @@
 - 🟢 Write initial unit tests
 - 🟢 Configure API testing tools (Insomnia)
 - 🔴 Configure frontend testing tools
-
-## Frontend Setup
-- 🔴 Create Next.js project
-- 🔴 Install and configure Tailwind CSS
-- 🔴 Set up Material Design framework
-- 🔴 Create basic project structure 

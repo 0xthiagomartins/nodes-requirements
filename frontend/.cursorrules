@@ -1,0 +1,48 @@
+# Frontend Project Rules and Guidelines
+
+project:
+  name: "Miner Node Comparison Frontend"
+  tech_stack:
+    - Next.js
+    - TypeScript
+    - Tailwind CSS
+    - shadcn/ui
+  structure:
+    src/:
+      - app/: "Next.js app router pages and layouts"
+      - components/: "Reusable UI components"
+      - lib/: "Utility functions and shared logic"
+      - types/: "TypeScript type definitions"
+      - hooks/: "Custom React hooks"
+      - styles/: "Global styles and Tailwind utilities"
+
+conventions:
+  code_style:
+    - "Use TypeScript for all components"
+    - "Follow React hooks conventions"
+    - "Use named exports for components"
+    - "Keep components small and focused"
+
+  components:
+    - "Place shared components in src/components"
+    - "Group related components in subdirectories"
+    - "Create index.ts files for clean exports"
+    - "Use shadcn/ui components when possible"
+
+  state_management:
+    - "Use React Query for API data"
+    - "Keep component state minimal"
+    - "Lift state up when needed"
+    - "Use context sparingly"
+
+development_workflow:
+  setup:
+    - "Run npm install for dependencies"
+    - "Use npm run dev for development"
+    - "Configure .env.local for environment variables"
+
+  testing:
+    - "Write tests for complex components"
+    - "Use React Testing Library"
+    - "Test user interactions"
+    - "Mock API calls in tests"
