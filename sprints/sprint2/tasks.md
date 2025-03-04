@@ -1,14 +1,14 @@
 # Sprint 2 Tasks
 
 ## API Development
-- 🟡 Implement POST /nodes endpoint
+- ✅ Implement POST /nodes endpoint
   - ✅ Validate request body
   - ✅ Handle duplicate blockchain types
   - ✅ Return created node
-- 🔴 Implement PUT /nodes/{id} endpoint
-  - Validate request body
-  - Handle non-existent nodes
-  - Return updated node
+- ✅ Implement PUT /nodes/{id} endpoint
+  - ✅ Validate request body
+  - ✅ Handle non-existent nodes
+  - ✅ Return updated node
 - 🔴 Implement DELETE /nodes/{id} endpoint
   - Handle cascade deletion with price history
   - Return success status
@@ -45,10 +45,9 @@
 - 🔴 Add database connection pooling
 
 ## Testing & Documentation
-- 🟡 Write unit tests for new endpoints
-  - ✅ POST /nodes tests
-  - 🔴 PUT /nodes tests
-  - 🔴 DELETE /nodes tests
+- ✅ Write tests for POST /nodes
+- ✅ Write tests for PUT /nodes
+- 🔴 Write tests for DELETE /nodes
 - 🟢 Organize test structure
   - ✅ Move integration tests to /tests
   - ✅ Create common test utilities

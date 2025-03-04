@@ -54,7 +54,7 @@ pub async fn update_node(
     update: UpdateNodeRequest,
 ) -> Result<Node, AppError> {
     // Check if node exists
-    let _existing = sqlx::query_as!(
+    let existing = sqlx::query_as!(
         Node,
         r#"
         SELECT 
@@ -72,6 +72,17 @@ pub async fn update_node(
     )
     .fetch_optional(pool)
     .await?;
+
+    let existing = existing.ok_or_else(|| AppError::NotFound("Node not found".to_string()))?;
+
+    // If no fields to update, return existing node
+    if update.blockchain_type.is_none() 
+        && update.cpu_cores.is_none()
+        && update.ram_gb.is_none()
+        && update.storage_gb.is_none()
+        && update.network_mbps.is_none() {
+        return Ok(existing);
+    }
 
     // Check for duplicate blockchain type if it's being updated
     if let Some(blockchain_type) = &update.blockchain_type {
@@ -92,56 +103,48 @@ pub async fn update_node(
         }
     }
 
-    // Build update query dynamically
-    let mut query = String::from(
+    // Store the reference to blockchain_type
+    let blockchain_type_ref = update.blockchain_type.as_ref();
+
+    // Update node with COALESCE to handle NULL values
+    let updated = sqlx::query!(
         r#"
         UPDATE nodes SET 
-        "#
-    );
-    let mut params = Vec::new();
-    
-    if let Some(blockchain_type) = update.blockchain_type {
-        query.push_str("blockchain_type = ?, ");
-        params.push(blockchain_type.to_string());
-    }
-    if let Some(cpu_cores) = update.cpu_cores {
-        query.push_str("cpu_cores = ?, ");
-        params.push(cpu_cores.to_string());
-    }
-    if let Some(ram_gb) = update.ram_gb {
-        query.push_str("ram_gb = ?, ");
-        params.push(ram_gb.to_string());
-    }
-    if let Some(storage_gb) = update.storage_gb {
-        query.push_str("storage_gb = ?, ");
-        params.push(storage_gb.to_string());
-    }
-    if let Some(network_mbps) = update.network_mbps {
-        query.push_str("network_mbps = ?, ");
-        params.push(network_mbps.to_string());
-    }
-
-    query.push_str(
-        r#"
-        updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ? 
+            blockchain_type = COALESCE(?1, blockchain_type),
+            cpu_cores = COALESCE(?2, cpu_cores),
+            ram_gb = COALESCE(?3, ram_gb),
+            storage_gb = COALESCE(?4, storage_gb),
+            network_mbps = COALESCE(?5, network_mbps),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?6
         RETURNING 
-            id, blockchain_type,
-            cpu_cores as "cpu_cores: i32",
-            ram_gb as "ram_gb: i32",
-            storage_gb as "storage_gb: i32",
-            network_mbps as "network_mbps: i32",
+            id as "id!: i64",
+            blockchain_type as "blockchain_type!",
+            cpu_cores as "cpu_cores!: i32",
+            ram_gb as "ram_gb!: i32",
+            storage_gb as "storage_gb!: i32",
+            network_mbps as "network_mbps!: i32",
             created_at as "created_at!: DateTime<Utc>",
             updated_at as "updated_at!: DateTime<Utc>"
-        "#
-    );
-    params.push(id.to_string());
+        "#,
+        blockchain_type_ref,
+        update.cpu_cores,
+        update.ram_gb,
+        update.storage_gb,
+        update.network_mbps,
+        id
+    )
+    .fetch_one(pool)
+    .await?;
 
-    let mut query = sqlx::query_as::<_, Node>(&query);
-    for param in params {
-        query = query.bind(param);
-    }
-    let node = query.fetch_one(pool).await?;
-
-    Ok(node)
+    Ok(Node {
+        id: updated.id,
+        blockchain_type: updated.blockchain_type,
+        cpu_cores: updated.cpu_cores,
+        ram_gb: updated.ram_gb,
+        storage_gb: updated.storage_gb,
+        network_mbps: updated.network_mbps,
+        created_at: updated.created_at,
+        updated_at: updated.updated_at,
+    })
 } 
