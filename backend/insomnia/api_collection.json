@@ -119,12 +119,6 @@
             "parentId": "folder_prices"
         },
         {
-            "_id": "folder_gcp",
-            "name": "GCP Pricing API",
-            "_type": "request_group",
-            "parentId": "workspace"
-        },
-        {
             "_id": "folder_gcp_public",
             "name": "GCP Public Pricing API (v2beta)",
             "_type": "request_group",

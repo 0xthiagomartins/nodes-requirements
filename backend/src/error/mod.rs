@@ -19,6 +19,12 @@ pub enum AppError {
 
     #[error("Conflict: {0}")]
     Conflict(String),
+
+    #[error("External service error: {0}")]
+    ExternalService(String),
+
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }
 
 impl ResponseError for AppError {
@@ -39,6 +45,14 @@ impl ResponseError for AppError {
             })),
             AppError::Conflict(msg) => HttpResponse::Conflict().json(json!({
                 "error": msg
+            })),
+            AppError::ExternalService(msg) => HttpResponse::InternalServerError().json(json!({
+                "error": "External service error",
+                "details": msg
+            })),
+            AppError::InvalidInput(msg) => HttpResponse::BadRequest().json(json!({
+                "error": "Invalid input",
+                "details": msg
             })),
         }
     }

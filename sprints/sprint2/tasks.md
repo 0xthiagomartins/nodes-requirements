@@ -15,8 +15,8 @@
 
 ## Price History Integration 🟡
 - 🟡 Create price fetcher service
-  - 🟡 Implement GCP price fetching (structure created)
-  - 🟡 Implement Hetzner price fetching (structure created)
+  - 🟡 Implement GCP price fetching (structure implemented, needs price calculation)
+  - 🔴 Implement AWS price fetching (placeholder created)
 - 🔴 Add scheduled price updates
   - 🔴 Set up background task system
   - 🔴 Configure update intervals
