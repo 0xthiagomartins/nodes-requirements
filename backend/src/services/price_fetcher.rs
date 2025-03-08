@@ -170,11 +170,44 @@ impl GcpPriceFetcher {
         self.client = client;
     }
 
+    const MAX_RETRIES: u32 = 3;
+    const RETRY_DELAY_MS: u64 = 1000; // 1 second delay between retries
+
+    async fn retry_with_basic_delay<F, Fut, T>(&self, operation: F) -> Result<T, AppError>
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = Result<T, AppError>>,
+    {
+        let mut retries = 0;
+
+        loop {
+            match operation().await {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    retries += 1;
+                    if retries >= Self::MAX_RETRIES {
+                        return Err(e);
+                    }
+
+                    println!(
+                        "Request failed (attempt {}/{}), retrying in {}ms: {:?}",
+                        retries,
+                        Self::MAX_RETRIES,
+                        Self::RETRY_DELAY_MS,
+                        e
+                    );
+
+                    tokio::time::sleep(tokio::time::Duration::from_millis(Self::RETRY_DELAY_MS))
+                        .await;
+                }
+            }
+        }
+    }
+
     async fn get_service_skus(&self, service_id: &str) -> Result<Vec<GcpSku>, AppError> {
         let mut filtered_skus = Vec::new();
         let mut page_token: Option<String> = None;
         let mut retry_count = 0;
-        const MAX_RETRIES: u32 = 3;
 
         loop {
             let url = format!("{}/v1/services/{}/skus", self.base_url, service_id);
@@ -190,19 +223,21 @@ impl GcpPriceFetcher {
 
             // Try to fetch page with retries
             let skus_response = loop {
-                match self.fetch_page(&url, &query_params).await {
+                match self
+                    .retry_with_basic_delay(|| async { self.fetch_page(&url, &query_params).await })
+                    .await
+                {
                     Ok(response) => break response,
                     Err(e) => {
                         retry_count += 1;
-                        if retry_count >= MAX_RETRIES {
+                        if retry_count >= Self::MAX_RETRIES {
                             return Err(e);
                         }
                         println!(
                             "Retrying page fetch (attempt {}/{})",
                             retry_count + 1,
-                            MAX_RETRIES
+                            Self::MAX_RETRIES
                         );
-                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     }
                 }
             };
@@ -214,7 +249,6 @@ impl GcpPriceFetcher {
             match skus_response.next_page_token {
                 Some(token) if !token.is_empty() => {
                     page_token = Some(token);
-                    retry_count = 0; // Reset retry counter for new page
                 }
                 _ => break,
             }
@@ -228,37 +262,42 @@ impl GcpPriceFetcher {
         url: &str,
         query_params: &[(&str, &str)],
     ) -> Result<GcpSkuResponse, AppError> {
-        let request = self
-            .client
-            .get(url)
-            .query(query_params)
-            .build()
-            .map_err(|e| AppError::ExternalService(format!("Failed to build request: {}", e)))?;
+        self.retry_with_basic_delay(|| async {
+            let request = self
+                .client
+                .get(url)
+                .query(query_params)
+                .build()
+                .map_err(|e| {
+                    AppError::ExternalService(format!("Failed to build request: {}", e))
+                })?;
 
-        let response =
-            self.client.execute(request).await.map_err(|e| {
+            let response = self.client.execute(request).await.map_err(|e| {
                 AppError::ExternalService(format!("Failed to fetch GCP SKUs: {}", e))
             })?;
 
-        let status = response.status();
-        if !status.is_success() {
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Failed to read error response".to_string());
+            let status = response.status();
+            if !status.is_success() {
+                let error_text = response
+                    .text()
+                    .await
+                    .unwrap_or_else(|_| "Failed to read error response".to_string());
 
-            return Err(AppError::ExternalService(format!(
-                "GCP API error (status {}): {}",
-                status, error_text
-            )));
-        }
+                return Err(AppError::ExternalService(format!(
+                    "GCP API error (status {}): {}",
+                    status, error_text
+                )));
+            }
 
-        let response_text = response.text().await.map_err(|e| {
-            AppError::ExternalService(format!("Failed to read GCP response: {}", e))
-        })?;
+            let response_text = response.text().await.map_err(|e| {
+                AppError::ExternalService(format!("Failed to read GCP response: {}", e))
+            })?;
 
-        serde_json::from_str(&response_text)
-            .map_err(|e| AppError::ExternalService(format!("Failed to parse GCP response: {}", e)))
+            serde_json::from_str(&response_text).map_err(|e| {
+                AppError::ExternalService(format!("Failed to parse GCP response: {}", e))
+            })
+        })
+        .await
     }
 
     fn filter_skus<'a>(&self, skus: &'a [GcpSku], resource_type: &str) -> Vec<&'a GcpSku> {
@@ -297,14 +336,17 @@ impl GcpPriceFetcher {
         amount: i32,
     ) -> Result<f64, AppError> {
         if amount <= 0 {
-            return Ok(0.0); // Return 0 for zero or negative amounts
+            return Ok(0.0);
         }
 
         let service_id = GCP_SERVICES.get(resource_type).ok_or_else(|| {
             AppError::InvalidInput(format!("Invalid resource type: {}", resource_type))
         })?;
 
-        let skus = self.get_service_skus(service_id).await?;
+        // Wrap the SKU fetching in retry mechanism
+        let skus = self
+            .retry_with_basic_delay(|| async { self.get_service_skus(service_id).await })
+            .await?;
 
         println!("Got {} SKUs for service {}", skus.len(), service_id);
 

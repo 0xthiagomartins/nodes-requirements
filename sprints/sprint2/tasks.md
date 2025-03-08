@@ -14,18 +14,24 @@
   - ✅ Return success status
 
 ## Price History Integration 🟡
-- 🟡 Create price fetcher service
-  - 🟡 Implement GCP price fetching
+- ✅ Create price fetcher service
+  - ✅ Implement GCP price fetching
     - ✅ Basic structure implemented
     - ✅ Price calculation logic
-    - 🟡 Pagination handling for SKUs
-      - 🟡 Implement memory-efficient pagination
-      - 🟡 Filter results across all pages
-      - 🔴 Add retry mechanism for failed requests
+    - ✅ Pagination handling for SKUs
+      - ✅ Implement memory-efficient pagination
+      - ✅ Filter results across all pages
+      - ✅ Add retry mechanism for failed requests
+        - ✅ Implement basic retry with fixed delay
   - 🔴 Implement AWS price fetching (placeholder created)
-- 🔴 Add scheduled price updates
-  - 🔴 Set up background task system
+- 🟡 Add scheduled price updates
+  - 🟡 Set up background task system
+    - 🔴 Create task scheduler
+    - 🔴 Implement graceful shutdown
+    - 🔴 Add error handling for tasks
   - 🔴 Configure update intervals
+    - 🔴 Make interval configurable via env vars
+    - 🔴 Add jitter to prevent thundering herd
 - ✅ Create price history endpoints
   - ✅ GET /nodes/{id}/prices
   - ✅ GET /nodes/{id}/prices/latest
