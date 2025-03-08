@@ -1,8 +1,8 @@
-use sqlx::SqlitePool;
 use chrono::{DateTime, Utc};
+use sqlx::SqlitePool;
 
-use crate::models::{Node, CreateNodeRequest, UpdateNodeRequest};  // Import from models
 use crate::error::AppError;
+use crate::models::{CreateNodeRequest, Node, UpdateNodeRequest}; // Import from models
 
 pub async fn create_node(pool: &SqlitePool, node: CreateNodeRequest) -> Result<Node, AppError> {
     // Check for duplicate blockchain type
@@ -12,7 +12,7 @@ pub async fn create_node(pool: &SqlitePool, node: CreateNodeRequest) -> Result<N
     )
     .fetch_one(pool)
     .await?
-    > 0;
+        > 0;
 
     if exists {
         return Err(AppError::Conflict(format!(
@@ -76,11 +76,12 @@ pub async fn update_node(
     let existing = existing.ok_or_else(|| AppError::NotFound("Node not found".to_string()))?;
 
     // If no fields to update, return existing node
-    if update.blockchain_type.is_none() 
+    if update.blockchain_type.is_none()
         && update.cpu_cores.is_none()
         && update.ram_gb.is_none()
         && update.storage_gb.is_none()
-        && update.network_mbps.is_none() {
+        && update.network_mbps.is_none()
+    {
         return Ok(existing);
     }
 
@@ -93,7 +94,7 @@ pub async fn update_node(
         )
         .fetch_one(pool)
         .await?
-        > 0;
+            > 0;
 
         if exists {
             return Err(AppError::Conflict(format!(
@@ -150,16 +151,36 @@ pub async fn update_node(
 }
 
 pub async fn delete_node(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
-    let result = sqlx::query!(
-        "DELETE FROM nodes WHERE id = ?",
-        id
-    )
-    .execute(pool)
-    .await?;
+    let result = sqlx::query!("DELETE FROM nodes WHERE id = ?", id)
+        .execute(pool)
+        .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound("Node not found".to_string()));
     }
 
     Ok(())
-} 
+}
+
+pub async fn get_all_nodes(pool: &SqlitePool) -> Result<Vec<Node>, AppError> {
+    let nodes = sqlx::query_as!(
+        Node,
+        r#"
+        SELECT 
+            id as "id!: i64",
+            blockchain_type as "blockchain_type!",
+            cpu_cores as "cpu_cores!: i32",
+            ram_gb as "ram_gb!: i32",
+            storage_gb as "storage_gb!: i32",
+            network_mbps as "network_mbps!: i32",
+            created_at as "created_at!: DateTime<Utc>",
+            updated_at as "updated_at!: DateTime<Utc>"
+        FROM nodes
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    Ok(nodes)
+}

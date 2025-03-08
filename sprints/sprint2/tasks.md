@@ -25,12 +25,12 @@
         - ✅ Implement basic retry with fixed delay
   - 🔴 Implement AWS price fetching (placeholder created)
 - 🟡 Add scheduled price updates
-  - 🟡 Set up background task system
-    - 🔴 Create task scheduler
-    - 🔴 Implement graceful shutdown
-    - 🔴 Add error handling for tasks
-  - 🔴 Configure update intervals
-    - 🔴 Make interval configurable via env vars
+  - ✅ Set up background task system
+    - ✅ Create task scheduler
+    - ✅ Implement graceful shutdown
+    - ✅ Add error handling for tasks
+  - 🟡 Configure update intervals
+    - 🟡 Make interval configurable via env vars
     - 🔴 Add jitter to prevent thundering herd
 - ✅ Create price history endpoints
   - ✅ GET /nodes/{id}/prices

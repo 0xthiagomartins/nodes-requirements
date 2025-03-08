@@ -4,13 +4,15 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time;
 
+use crate::db;
 use crate::error::AppError;
+use crate::models::{CreatePriceHistoryRequest, Node};
 use crate::services::price_fetcher::PriceFetcher;
 use sqlx::SqlitePool;
 
 pub struct PriceUpdateScheduler {
     pool: SqlitePool,
-    price_fetcher: Arc<dyn PriceFetcher + Send + Sync>,
+    pub(crate) price_fetcher: Arc<dyn PriceFetcher + Send + Sync>,
     interval: Duration,
     task_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
 }
@@ -55,11 +57,65 @@ impl PriceUpdateScheduler {
         }
     }
 
-    async fn update_prices(
+    pub(crate) async fn update_prices(
         pool: &SqlitePool,
         price_fetcher: &Arc<dyn PriceFetcher + Send + Sync>,
     ) -> Result<(), AppError> {
-        // TODO: Implement price update logic
+        println!("Starting price update cycle");
+
+        // Fetch all nodes
+        let nodes = db::nodes::get_all_nodes(pool).await?;
+        println!("Found {} nodes to update", nodes.len());
+
+        for node in nodes {
+            println!("Updating prices for node {}", node.id);
+            match Self::update_node_prices(pool, price_fetcher, &node).await {
+                Ok(_) => println!("Successfully updated prices for node {}", node.id),
+                Err(e) => eprintln!("Failed to update prices for node {}: {}", node.id, e),
+            }
+        }
+
+        println!("Completed price update cycle");
         Ok(())
+    }
+
+    async fn update_node_prices(
+        pool: &SqlitePool,
+        price_fetcher: &Arc<dyn PriceFetcher + Send + Sync>,
+        node: &Node,
+    ) -> Result<(), AppError> {
+        println!(
+            "Fetching prices for node {} (CPU: {}, RAM: {}, Storage: {})",
+            node.id, node.cpu_cores, node.ram_gb, node.storage_gb
+        );
+
+        // Fetch current prices from cloud providers
+        let gcp_price = price_fetcher
+            .fetch_price(node.cpu_cores, node.ram_gb, node.storage_gb)
+            .await?;
+
+        println!("Got GCP price: ${}/hour", gcp_price);
+
+        // Create price history records
+        let gcp_price_history = CreatePriceHistoryRequest {
+            node_id: node.id,
+            provider: "gcp".to_string(),
+            price_per_hour: gcp_price,
+            currency: "USD".to_string(),
+        };
+
+        // Store in database
+        println!("Saving price history record for node {}", node.id);
+        let result = db::price_history::create_price_history(pool, gcp_price_history).await?;
+        println!(
+            "Successfully saved price history record with id {}",
+            result.id
+        );
+
+        Ok(())
+    }
+
+    pub async fn trigger_update(&self) -> Result<(), AppError> {
+        Self::update_prices(&self.pool, &self.price_fetcher).await
     }
 }
