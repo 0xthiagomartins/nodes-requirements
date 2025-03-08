@@ -1,3 +1,5 @@
+use rand::Rng;
+use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -18,11 +20,13 @@ pub struct PriceUpdateScheduler {
 }
 
 impl PriceUpdateScheduler {
-    pub fn new(
-        pool: SqlitePool,
-        price_fetcher: Arc<dyn PriceFetcher + Send + Sync>,
-        interval_minutes: u64,
-    ) -> Self {
+    pub fn new(pool: SqlitePool, price_fetcher: Arc<dyn PriceFetcher + Send + Sync>) -> Self {
+        // Get interval from env var, default to 60 minutes if not set
+        let interval_minutes = env::var("PRICE_UPDATE_INTERVAL_MINUTES")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(60);
+
         Self {
             pool,
             price_fetcher,
@@ -37,6 +41,10 @@ impl PriceUpdateScheduler {
         let interval = self.interval;
 
         let task = tokio::spawn(async move {
+            // Add initial jitter delay (0-30% of interval)
+            let jitter_secs = rand::thread_rng().gen_range(0..=(interval.as_secs() * 3 / 10));
+            time::sleep(Duration::from_secs(jitter_secs)).await;
+
             let mut interval_timer = time::interval(interval);
 
             loop {

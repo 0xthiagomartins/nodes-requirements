@@ -17,9 +17,9 @@ async fn test_scheduler_updates_prices() {
     let pool = db::create_pool("sqlite::memory:").await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();
 
-    // Use real GCP price fetcher with 1 minute interval
+    // Use real GCP price fetcher
     let fetcher = Arc::new(GcpPriceFetcher::new(api_key));
-    let scheduler = PriceUpdateScheduler::new(pool.clone(), fetcher, 1);
+    let scheduler = PriceUpdateScheduler::new(pool.clone(), fetcher);
 
     // Create a test node
     let node = create_test_node(&pool).await;
