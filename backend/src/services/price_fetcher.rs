@@ -1,7 +1,7 @@
 use async_trait::async_trait;
+use phf;
 use reqwest::Client;
 use serde::Deserialize;
-use phf;
 use serde_json;
 
 use crate::error::AppError;
@@ -101,7 +101,12 @@ pub struct GeoTaxonomy {
 
 #[async_trait]
 pub trait PriceFetcher {
-    async fn fetch_price(&self, cpu_cores: i32, ram_gb: i32, storage_gb: i32) -> Result<f64, AppError>;
+    async fn fetch_price(
+        &self,
+        cpu_cores: i32,
+        ram_gb: i32,
+        storage_gb: i32,
+    ) -> Result<f64, AppError>;
 }
 
 pub struct GcpPriceFetcher {
@@ -110,7 +115,7 @@ pub struct GcpPriceFetcher {
     base_url: String,
 }
 
-#[allow(dead_code)]  // Remove warning since this will be implemented later
+#[allow(dead_code)] // Remove warning since this will be implemented later
 pub struct AwsPriceFetcher {
     api_key: String,
     client: Client,
@@ -118,14 +123,12 @@ pub struct AwsPriceFetcher {
 
 impl GcpPriceFetcher {
     pub fn new(api_key: String) -> Self {
-        let client = reqwest::Client::builder()
-            .build()
-            .unwrap();
+        let client = reqwest::Client::builder().build().unwrap();
 
         Self {
             api_key,
             client,
-            base_url: "https://cloudbilling.googleapis.com".to_string()
+            base_url: "https://cloudbilling.googleapis.com".to_string(),
         }
     }
 
@@ -141,23 +144,23 @@ impl GcpPriceFetcher {
         };
 
         let expression = &pricing_info.pricing_expression;
-        
+
         // Get the unit price
         let rate = match expression.tiered_rates.first() {
             Some(rate) => rate,
             None => return 0.0,
         };
-        
+
         let dollars = rate.unit_price.units.parse::<f64>().unwrap_or(0.0);
         let nanos = rate.unit_price.nanos as f64 / 1_000_000_000.0;
         let unit_price = dollars + nanos;
 
         // Calculate price based on resource type and units
         match expression.usage_unit.as_str() {
-            "h" => unit_price * amount, // CPU hours
-            "GiBy.h" => unit_price * amount, // RAM GB-hours
+            "h" => unit_price * amount,       // CPU hours
+            "GiBy.h" => unit_price * amount,  // RAM GB-hours
             "GiBy.mo" => unit_price * amount, // Storage GB-months
-            "GiBy" => unit_price * amount, // Network GB
+            "GiBy" => unit_price * amount,    // Network GB
             _ => 0.0,
         }
     }
@@ -168,100 +171,147 @@ impl GcpPriceFetcher {
     }
 
     async fn get_service_skus(&self, service_id: &str) -> Result<Vec<GcpSku>, AppError> {
-        let url = format!("{}/v1/services/{}/skus", self.base_url, service_id);
-        
-        // Keep only essential request info
-        println!("Fetching from: {}", url);
+        let mut all_filtered_skus = Vec::new();
+        let mut page_token: Option<String> = None;
 
-        let request = self.client
-            .get(&url)
-            .query(&[("key", &self.api_key), ("pageSize", &"5000".to_string())])
-            .build()
-            .map_err(|e| AppError::ExternalService(format!("Failed to build request: {}", e)))?;
+        loop {
+            let url = format!("{}/v1/services/{}/skus", self.base_url, service_id);
 
-        let response = self.client
-            .execute(request)
-            .await
-            .map_err(|e| AppError::ExternalService(format!("Failed to fetch GCP SKUs: {}", e)))?;
+            // Build query parameters including page token if present
+            let mut query_params = vec![
+                ("key", self.api_key.as_str()),
+                ("pageSize", "100"), // Reduced page size for better memory management
+            ];
 
-        let status = response.status();
+            if let Some(token) = &page_token {
+                query_params.push(("pageToken", token));
+            }
 
-        if !status.is_success() {
-            let error_text = response.text().await
-                .unwrap_or_else(|_| "Failed to read error response".to_string());
-            
-            // Keep error response for debugging
-            println!("API error: {} - {}", status, error_text);
-            return Err(AppError::ExternalService(format!(
-                "GCP API error (status {}): {}", 
-                status,
-                error_text
-            )));
+            let request = self
+                .client
+                .get(&url)
+                .query(&query_params)
+                .build()
+                .map_err(|e| {
+                    AppError::ExternalService(format!("Failed to build request: {}", e))
+                })?;
+
+            let response = self.client.execute(request).await.map_err(|e| {
+                AppError::ExternalService(format!("Failed to fetch GCP SKUs: {}", e))
+            })?;
+
+            let status = response.status();
+
+            if !status.is_success() {
+                let error_text = response
+                    .text()
+                    .await
+                    .unwrap_or_else(|_| "Failed to read error response".to_string());
+
+                return Err(AppError::ExternalService(format!(
+                    "GCP API error (status {}): {}",
+                    status, error_text
+                )));
+            }
+
+            let response_text = response.text().await.map_err(|e| {
+                AppError::ExternalService(format!("Failed to read GCP response: {}", e))
+            })?;
+
+            let skus_response: GcpSkuResponse =
+                serde_json::from_str(&response_text).map_err(|e| {
+                    AppError::ExternalService(format!("Failed to parse GCP response: {}", e))
+                })?;
+
+            // Process this page's SKUs
+            all_filtered_skus.extend(skus_response.skus);
+
+            // Check if there are more pages
+            match skus_response.next_page_token {
+                Some(token) if !token.is_empty() => {
+                    page_token = Some(token);
+                }
+                _ => break, // No more pages
+            }
         }
 
-        let response_text = response.text().await
-            .map_err(|e| AppError::ExternalService(format!("Failed to read GCP response: {}", e)))?;
-
-        let skus_response: GcpSkuResponse = serde_json::from_str(&response_text)
-            .map_err(|e| AppError::ExternalService(format!("Failed to parse GCP response: {}", e)))?;
-
-        Ok(skus_response.skus)
+        Ok(all_filtered_skus)
     }
 
     fn filter_skus<'a>(&self, skus: &'a [GcpSku], resource_type: &str) -> Vec<&'a GcpSku> {
-        // Keep only summary info
         println!("Filtering {} SKUs for {}", skus.len(), resource_type);
-        
-        let filtered = skus.iter()
+
+        let filtered = skus
+            .iter()
             .filter(|sku| {
                 let matches = match resource_type {
-                    "CPU" => sku.description.contains("CPU") && !sku.description.contains("Preemptible"),
-                    "RAM" => sku.description.contains("RAM") && !sku.description.contains("Preemptible"),
-                    "SSD" => sku.description.contains("SSD") || sku.description.contains("Persistent Disk"),
-                    "Network" => sku.description.contains("Network") && sku.description.contains("Egress"),
-                    _ => false
+                    "CPU" => {
+                        sku.description.contains("CPU") && !sku.description.contains("Preemptible")
+                    }
+                    "RAM" => {
+                        sku.description.contains("RAM") && !sku.description.contains("Preemptible")
+                    }
+                    "SSD" => {
+                        sku.description.contains("SSD")
+                            || sku.description.contains("Persistent Disk")
+                    }
+                    "Network" => {
+                        sku.description.contains("Network") && sku.description.contains("Egress")
+                    }
+                    _ => false,
                 } && sku.category.usage_type == "OnDemand";
                 matches
             })
             .collect::<Vec<_>>();
-        
+
         println!("Found {} matching SKUs", filtered.len());
         filtered
     }
 
-    async fn calculate_resource_price(&self, resource_type: &str, amount: i32) -> Result<f64, AppError> {
+    async fn calculate_resource_price(
+        &self,
+        resource_type: &str,
+        amount: i32,
+    ) -> Result<f64, AppError> {
         if amount <= 0 {
             return Ok(0.0); // Return 0 for zero or negative amounts
         }
 
-        let service_id = GCP_SERVICES.get(resource_type)
-            .ok_or_else(|| AppError::InvalidInput(format!("Invalid resource type: {}", resource_type)))?;
+        let service_id = GCP_SERVICES.get(resource_type).ok_or_else(|| {
+            AppError::InvalidInput(format!("Invalid resource type: {}", resource_type))
+        })?;
 
         let skus = self.get_service_skus(service_id).await?;
-        
+
         println!("Got {} SKUs for service {}", skus.len(), service_id);
 
         // Map internal resource types to GCP resource groups
         let resource_group = match resource_type {
             "compute" => "CPU",
-            "ram" => "RAM",  // Add RAM mapping
+            "ram" => "RAM", // Add RAM mapping
             "storage" => "SSD",
             "network" => "Network",
             _ => return Err(AppError::InvalidInput("Invalid resource type".to_string())),
         };
 
         let filtered_skus = self.filter_skus(&skus, resource_group);
-        
-        println!("Filtered to {} SKUs for resource type {}", filtered_skus.len(), resource_group);
+
+        println!(
+            "Filtered to {} SKUs for resource type {}",
+            filtered_skus.len(),
+            resource_group
+        );
 
         if filtered_skus.is_empty() {
-            return Err(AppError::ExternalService(
-                format!("No SKUs found for {} resource", resource_type)
-            ));
+            return Err(AppError::ExternalService(format!(
+                "No SKUs found for {} resource",
+                resource_type
+            )));
         }
 
         // Calculate price based on the first matching SKU
-        let sku = filtered_skus.first()
+        let sku = filtered_skus
+            .first()
             .ok_or_else(|| AppError::ExternalService("No SKU found".to_string()))?;
 
         Ok(self.calculate_sku_price(sku, amount as f64))
@@ -270,7 +320,12 @@ impl GcpPriceFetcher {
 
 #[async_trait]
 impl PriceFetcher for GcpPriceFetcher {
-    async fn fetch_price(&self, cpu_cores: i32, ram_gb: i32, storage_gb: i32) -> Result<f64, AppError> {
+    async fn fetch_price(
+        &self,
+        cpu_cores: i32,
+        ram_gb: i32,
+        storage_gb: i32,
+    ) -> Result<f64, AppError> {
         let cpu_price = self.calculate_resource_price("compute", cpu_cores).await?;
         let ram_price = self.calculate_resource_price("ram", ram_gb).await?;
         let storage_price = self.calculate_resource_price("storage", storage_gb).await?;
@@ -282,8 +337,13 @@ impl PriceFetcher for GcpPriceFetcher {
 
 #[async_trait]
 impl PriceFetcher for AwsPriceFetcher {
-    async fn fetch_price(&self, _cpu_cores: i32, _ram_gb: i32, _storage_gb: i32) -> Result<f64, AppError> {
+    async fn fetch_price(
+        &self,
+        _cpu_cores: i32,
+        _ram_gb: i32,
+        _storage_gb: i32,
+    ) -> Result<f64, AppError> {
         // TODO: Implement AWS price fetching
         Ok(0.0)
     }
-} 
+}

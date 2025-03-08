@@ -15,7 +15,13 @@
 
 ## Price History Integration 🟡
 - 🟡 Create price fetcher service
-  - 🟡 Implement GCP price fetching (structure implemented, needs price calculation)
+  - 🟡 Implement GCP price fetching
+    - ✅ Basic structure implemented
+    - ✅ Price calculation logic
+    - 🟡 Pagination handling for SKUs
+      - 🟡 Implement memory-efficient pagination
+      - 🟡 Filter results across all pages
+      - 🔴 Add retry mechanism for failed requests
   - 🔴 Implement AWS price fetching (placeholder created)
 - 🔴 Add scheduled price updates
   - 🔴 Set up background task system
