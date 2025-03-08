@@ -171,71 +171,94 @@ impl GcpPriceFetcher {
     }
 
     async fn get_service_skus(&self, service_id: &str) -> Result<Vec<GcpSku>, AppError> {
-        let mut all_filtered_skus = Vec::new();
+        let mut filtered_skus = Vec::new();
         let mut page_token: Option<String> = None;
+        let mut retry_count = 0;
+        const MAX_RETRIES: u32 = 3;
 
         loop {
             let url = format!("{}/v1/services/{}/skus", self.base_url, service_id);
 
-            // Build query parameters including page token if present
             let mut query_params = vec![
                 ("key", self.api_key.as_str()),
-                ("pageSize", "100"), // Reduced page size for better memory management
+                ("pageSize", "100"), // Process in smaller chunks
             ];
 
             if let Some(token) = &page_token {
                 query_params.push(("pageToken", token));
             }
 
-            let request = self
-                .client
-                .get(&url)
-                .query(&query_params)
-                .build()
-                .map_err(|e| {
-                    AppError::ExternalService(format!("Failed to build request: {}", e))
-                })?;
+            // Try to fetch page with retries
+            let skus_response = loop {
+                match self.fetch_page(&url, &query_params).await {
+                    Ok(response) => break response,
+                    Err(e) => {
+                        retry_count += 1;
+                        if retry_count >= MAX_RETRIES {
+                            return Err(e);
+                        }
+                        println!(
+                            "Retrying page fetch (attempt {}/{})",
+                            retry_count + 1,
+                            MAX_RETRIES
+                        );
+                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    }
+                }
+            };
 
-            let response = self.client.execute(request).await.map_err(|e| {
-                AppError::ExternalService(format!("Failed to fetch GCP SKUs: {}", e))
-            })?;
-
-            let status = response.status();
-
-            if !status.is_success() {
-                let error_text = response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Failed to read error response".to_string());
-
-                return Err(AppError::ExternalService(format!(
-                    "GCP API error (status {}): {}",
-                    status, error_text
-                )));
-            }
-
-            let response_text = response.text().await.map_err(|e| {
-                AppError::ExternalService(format!("Failed to read GCP response: {}", e))
-            })?;
-
-            let skus_response: GcpSkuResponse =
-                serde_json::from_str(&response_text).map_err(|e| {
-                    AppError::ExternalService(format!("Failed to parse GCP response: {}", e))
-                })?;
-
-            // Process this page's SKUs
-            all_filtered_skus.extend(skus_response.skus);
+            // Filter SKUs from this page immediately
+            filtered_skus.extend(skus_response.skus);
 
             // Check if there are more pages
             match skus_response.next_page_token {
                 Some(token) if !token.is_empty() => {
                     page_token = Some(token);
+                    retry_count = 0; // Reset retry counter for new page
                 }
-                _ => break, // No more pages
+                _ => break,
             }
         }
 
-        Ok(all_filtered_skus)
+        Ok(filtered_skus)
+    }
+
+    async fn fetch_page(
+        &self,
+        url: &str,
+        query_params: &[(&str, &str)],
+    ) -> Result<GcpSkuResponse, AppError> {
+        let request = self
+            .client
+            .get(url)
+            .query(query_params)
+            .build()
+            .map_err(|e| AppError::ExternalService(format!("Failed to build request: {}", e)))?;
+
+        let response =
+            self.client.execute(request).await.map_err(|e| {
+                AppError::ExternalService(format!("Failed to fetch GCP SKUs: {}", e))
+            })?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to read error response".to_string());
+
+            return Err(AppError::ExternalService(format!(
+                "GCP API error (status {}): {}",
+                status, error_text
+            )));
+        }
+
+        let response_text = response.text().await.map_err(|e| {
+            AppError::ExternalService(format!("Failed to read GCP response: {}", e))
+        })?;
+
+        serde_json::from_str(&response_text)
+            .map_err(|e| AppError::ExternalService(format!("Failed to parse GCP response: {}", e)))
     }
 
     fn filter_skus<'a>(&self, skus: &'a [GcpSku], resource_type: &str) -> Vec<&'a GcpSku> {
@@ -326,12 +349,46 @@ impl PriceFetcher for GcpPriceFetcher {
         ram_gb: i32,
         storage_gb: i32,
     ) -> Result<f64, AppError> {
-        let cpu_price = self.calculate_resource_price("compute", cpu_cores).await?;
-        let ram_price = self.calculate_resource_price("ram", ram_gb).await?;
-        let storage_price = self.calculate_resource_price("storage", storage_gb).await?;
-        let network_price = self.calculate_resource_price("network", 1).await?;
+        // Validate inputs first
+        if cpu_cores < 0 {
+            return Err(AppError::InvalidInput(
+                "CPU cores cannot be negative".to_string(),
+            ));
+        }
+        if ram_gb < 0 {
+            return Err(AppError::InvalidInput("RAM cannot be negative".to_string()));
+        }
+        if storage_gb < 0 {
+            return Err(AppError::InvalidInput(
+                "Storage cannot be negative".to_string(),
+            ));
+        }
 
-        Ok(cpu_price + ram_price + storage_price + network_price)
+        let mut total_price = 0.0;
+
+        // Calculate prices for non-zero values
+        if cpu_cores > 0 {
+            total_price += self.calculate_resource_price("compute", cpu_cores).await?;
+        }
+        if ram_gb > 0 {
+            total_price += self.calculate_resource_price("ram", ram_gb).await?;
+        }
+        if storage_gb > 0 {
+            total_price += self.calculate_resource_price("storage", storage_gb).await?;
+        }
+
+        // Only try to fetch network price if we're calculating a full price
+        if cpu_cores > 0 && ram_gb > 0 && storage_gb > 0 {
+            match self.calculate_resource_price("network", 1).await {
+                Ok(price) => total_price += price,
+                Err(AppError::ExternalService(_)) => {
+                    println!("Warning: Could not fetch network price, continuing without it");
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        Ok(total_price)
     }
 }
 
