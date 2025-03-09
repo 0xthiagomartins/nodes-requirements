@@ -79,3 +79,87 @@ pub async fn update_last_used(pool: &SqlitePool, key: &str) -> Result<(), AppErr
 
     Ok(())
 }
+
+pub async fn check_and_update_rate_limit(pool: &SqlitePool, key: &str) -> Result<bool, AppError> {
+    // Start a transaction since we need to check and update atomically
+    let mut tx = pool.begin().await.map_err(AppError::Database)?;
+
+    // Get current API key status
+    let api_key = sqlx::query_as!(
+        ApiKey,
+        r#"
+        SELECT 
+            id as "id!: i64",
+            key as "key!: String",
+            name as "name!: String",
+            created_at as "created_at!: DateTime<Utc>",
+            last_used_at as "last_used_at?: DateTime<Utc>",
+            is_active as "is_active!: bool",
+            deleted_at as "deleted_at?: DateTime<Utc>",
+            requests_per_minute as "requests_per_minute!: i32",
+            requests_this_minute as "requests_this_minute!: i32",
+            last_request_time as "last_request_time?: DateTime<Utc>"
+        FROM api_keys 
+        WHERE key = ? 
+        AND is_active = TRUE 
+        AND deleted_at IS NULL
+        "#,
+        key
+    )
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(AppError::Database)?;
+
+    let Some(api_key) = api_key else {
+        return Ok(false);
+    };
+
+    let now = Utc::now();
+    let should_reset = match api_key.last_request_time {
+        Some(last_time) => now.signed_duration_since(last_time).num_minutes() >= 1,
+        None => true,
+    };
+
+    // Reset counter if it's been more than a minute
+    if should_reset {
+        sqlx::query!(
+            r#"
+            UPDATE api_keys 
+            SET requests_this_minute = 1,
+                last_request_time = ?
+            WHERE key = ?
+            "#,
+            now,
+            key
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(AppError::Database)?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+        return Ok(true);
+    }
+
+    // Check if we're under the limit
+    if api_key.requests_this_minute >= api_key.requests_per_minute {
+        return Ok(false);
+    }
+
+    // Increment the counter
+    sqlx::query!(
+        r#"
+        UPDATE api_keys 
+        SET requests_this_minute = requests_this_minute + 1,
+            last_request_time = ?
+        WHERE key = ?
+        "#,
+        now,
+        key
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(AppError::Database)?;
+
+    tx.commit().await.map_err(AppError::Database)?;
+    Ok(true)
+}

@@ -25,6 +25,7 @@ async fn test_api_key_crud() {
     // Test creation
     let request = CreateApiKeyRequest {
         name: "test_key".to_string(),
+        requests_per_minute: Some(60),
     };
     let response = db::api_keys::create_api_key(&pool, request).await.unwrap();
     assert!(!response.key.is_empty());

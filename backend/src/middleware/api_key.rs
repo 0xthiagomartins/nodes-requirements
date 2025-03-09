@@ -91,19 +91,16 @@ where
         let fut = self.service.call(req);
 
         Box::pin(async move {
-            match crate::db::api_keys::validate_api_key(&pool, &api_key).await {
+            match crate::db::api_keys::check_and_update_rate_limit(&pool, &api_key).await {
                 Ok(true) => {
-                    if let Err(e) = crate::db::api_keys::update_last_used(&pool, &api_key).await {
-                        log::error!("Failed to update API key last_used: {}", e);
-                    }
                     let res = fut.await?;
                     Ok(res.map_into_right_body())
                 }
                 Ok(false) => {
                     let res = fut.await?;
                     let (req, _) = res.into_parts();
-                    let res =
-                        HttpResponse::Unauthorized().json(json!({"error": "Invalid API key"}));
+                    let res = HttpResponse::TooManyRequests()
+                        .json(json!({"error": "Rate limit exceeded"}));
                     Ok(ServiceResponse::new(req, res).map_into_left_body())
                 }
                 Err(e) => {
