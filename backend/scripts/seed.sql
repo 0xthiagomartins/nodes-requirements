@@ -7,45 +7,27 @@ DELETE FROM sqlite_sequence WHERE name='nodes';
 DELETE FROM sqlite_sequence WHERE name='price_history';
 
 -- Insert test nodes
-INSERT INTO nodes (blockchain_type, cpu_cores, ram_gb, storage_gb, network_mbps) VALUES
-    ('ethereum', 8, 32, 2000, 1000),
-    ('bitcoin', 4, 16, 1000, 500),
-    ('solana', 16, 128, 4000, 2000),
-    ('cardano', 8, 64, 1500, 1000),
-    ('taraxa-lite', 4, 8, 100, 500),
-    ('taraxa-full', 4, 8, 1500, 500);
+INSERT INTO nodes (blockchain_type, cpu_cores, ram_gb, storage_gb, network_mbps)
+VALUES 
+    ('ethereum', 4, 8, 500, 1000),
+    ('bitcoin', 8, 16, 1000, 2000),
+    ('polkadot', 2, 4, 250, 500);
 
 -- Insert test price history
-INSERT INTO price_history (provider, node_id, price_usd, recorded_at) VALUES
-    ('aws', 1, 150.00, datetime('now', '-7 days')),
-    ('aws', 1, 145.00, datetime('now')),
-    ('gcp', 1, 155.00, datetime('now')),
-    ('azure', 1, 160.00, datetime('now')),
-    
-    ('aws', 2, 80.00, datetime('now', '-7 days')),
-    ('aws', 2, 85.00, datetime('now')),
-    ('gcp', 2, 82.00, datetime('now')),
-    ('azure', 2, 88.00, datetime('now')),
-    
-    ('aws', 3, 300.00, datetime('now', '-7 days')),
-    ('aws', 3, 295.00, datetime('now')),
-    ('gcp', 3, 310.00, datetime('now')),
-    ('azure', 3, 305.00, datetime('now')),
-    
-    ('aws', 4, 200.00, datetime('now', '-7 days')),
-    ('aws', 4, 195.00, datetime('now')),
-    ('gcp', 4, 205.00, datetime('now')),
-    ('azure', 4, 198.00, datetime('now')),
-    
-    ('aws', 5, 50.00, datetime('now', '-7 days')),
-    ('aws', 5, 48.00, datetime('now')),
-    ('gcp', 5, 52.00, datetime('now')),
-    ('azure', 5, 51.00, datetime('now')),
-    
-    ('aws', 6, 120.00, datetime('now', '-7 days')),
-    ('aws', 6, 115.00, datetime('now')),
-    ('gcp', 6, 125.00, datetime('now')),
-    ('azure', 6, 122.00, datetime('now'));
+INSERT INTO price_history (node_id, provider, price_per_hour, currency, fetched_at)
+VALUES 
+    (1, 'gcp', 1.25, 'USD', datetime('now')),
+    (1, 'aws', 1.50, 'USD', datetime('now')),
+    (2, 'gcp', 2.50, 'USD', datetime('now')),
+    (2, 'aws', 2.75, 'USD', datetime('now')),
+    (3, 'gcp', 0.75, 'USD', datetime('now')),
+    (3, 'aws', 0.85, 'USD', datetime('now'));
+
+-- Insert test API keys
+INSERT INTO api_keys (key, name, is_active)
+VALUES 
+    ('test-key-1', 'Development Key', TRUE),
+    ('test-key-2', 'Testing Key', TRUE);
 
 -- Add comments about Taraxa node types
 -- Note: These comments are for documentation purposes

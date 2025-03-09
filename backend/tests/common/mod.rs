@@ -2,7 +2,9 @@ use actix_http::Request;
 use actix_web::body::MessageBody;
 use actix_web::dev::ServiceResponse;
 use actix_web::{dev::Service, test, web, App};
-use backend::models::{CreateNodeRequest, Node, PriceHistory};
+use backend::models::{
+    CreateApiKeyRequest, CreateApiKeyResponse, CreateNodeRequest, Node, PriceHistory,
+};
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
@@ -21,13 +23,18 @@ pub async fn setup_test_app() -> (
         .expect("Failed to run migrations");
 
     // Verify tables exist
-    sqlx::query!(
-        "SELECT 1 as table_exists FROM sqlite_master WHERE type='table' AND name='price_history'"
+    let tables = sqlx::query!(
+        r#"
+        SELECT name 
+        FROM sqlite_master 
+        WHERE type='table' AND name IN ('price_history', 'api_keys')
+        "#
     )
-    .fetch_optional(&pool)
+    .fetch_all(&pool)
     .await
-    .expect("Failed to check if price_history table exists")
-    .expect("price_history table does not exist");
+    .expect("Failed to check if tables exist");
+
+    assert!(!tables.is_empty(), "Required tables do not exist");
 
     let app = test::init_service(
         App::new()
@@ -103,4 +110,15 @@ pub async fn create_test_node(pool: &SqlitePool) -> Node {
     backend::db::nodes::create_node(pool, node_request)
         .await
         .expect("Failed to create test node")
+}
+
+pub async fn insert_test_api_key(pool: &SqlitePool) -> CreateApiKeyResponse {
+    let request = CreateApiKeyRequest {
+        name: "test_key".to_string(),
+        requests_per_minute: Some(60),
+    };
+
+    backend::db::api_keys::create_api_key(pool, request)
+        .await
+        .expect("Failed to create test API key")
 }

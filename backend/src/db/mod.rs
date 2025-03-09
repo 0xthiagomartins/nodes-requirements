@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
 
+pub mod api_keys;
 pub mod nodes;
 pub mod price_history;
 
@@ -16,4 +17,4 @@ mod tests {
         let pool = create_pool("sqlite::memory:").await;
         assert!(pool.is_ok());
     }
-} 
+}
