@@ -1,7 +1,4 @@
-use backend::{
-    db,
-    models::{CreateApiKeyRequest, CreateApiKeyResponse},
-};
+use backend::{db, models::CreateApiKeyRequest};
 
 #[tokio::test]
 async fn test_api_key_table_exists() {

@@ -1,5 +1,10 @@
 use actix_cors::Cors;
-use actix_web::{web, App, HttpServer};
+use actix_web::{
+    dev::ServiceResponse,
+    middleware::DefaultHeaders,
+    web::{self, ServiceConfig},
+    App, HttpServer,
+};
 use dotenv::dotenv;
 use std::fs;
 
@@ -46,12 +51,20 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
-            .wrap(ApiKeyMiddleware::new())
+            .wrap(ApiKeyMiddleware::new(pool.clone()))
             .app_data(web::Data::new(pool.clone()))
-            .configure(routes::nodes::config)
-            .configure(routes::price_history::config)
+            .configure(configure_services)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
     .await
+}
+
+fn configure_services(cfg: &mut ServiceConfig) {
+    cfg.service(
+        web::scope("")
+            .configure(routes::nodes::config)
+            .configure(routes::price_history::config)
+            .configure(routes::api_keys::config),
+    );
 }

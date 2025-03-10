@@ -1,116 +1,124 @@
-use std::future::{ready, Ready};
-
 use actix_web::{
-    body::{BoxBody, EitherBody},
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    Error, HttpResponse,
+    dev::{forward_ready, Service, ServiceFactory, ServiceRequest, ServiceResponse, Transform},
+    Error,
 };
-use futures_util::future::LocalBoxFuture;
-use serde_json::json;
+use futures_util::future::{LocalBoxFuture, Ready};
 use sqlx::SqlitePool;
 
-pub struct ApiKeyMiddleware;
+pub struct ApiKeyMiddleware {
+    pool: sqlx::SqlitePool,
+}
 
 impl ApiKeyMiddleware {
-    pub fn new() -> Self {
-        ApiKeyMiddleware
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
     }
 }
 
 impl<S, B> Transform<S, ServiceRequest> for ApiKeyMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
+    S: ServiceFactory<
+            ServiceRequest,
+            Config = (),
+            Response = ServiceResponse<B>,
+            Error = Error,
+            InitError = (),
+        > + 'static,
+    S::Service: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone,
     B: 'static,
 {
-    type Response = ServiceResponse<EitherBody<BoxBody, B>>;
+    type Response = ServiceResponse<B>;
     type Error = Error;
-    type Transform = ApiKeyMiddlewareService<S>;
+    type Transform = ApiKeyMiddlewareService<S::Service>;
     type InitError = ();
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+    type Future = LocalBoxFuture<'static, Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(ApiKeyMiddlewareService { service }))
+        let pool = self.pool.clone();
+        Box::pin(async move {
+            let service = service.new_service(()).await?;
+            Ok(ApiKeyMiddlewareService { service, pool })
+        })
     }
 }
 
 pub struct ApiKeyMiddlewareService<S> {
     service: S,
+    pool: SqlitePool,
 }
 
 impl<S, B> Service<ServiceRequest> for ApiKeyMiddlewareService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
     B: 'static,
 {
-    type Response = ServiceResponse<EitherBody<BoxBody, B>>;
+    type Response = ServiceResponse<B>;
     type Error = Error;
     type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let pool = req
-            .app_data::<actix_web::web::Data<SqlitePool>>()
-            .unwrap()
-            .clone();
-
-        // Skip auth for API key management endpoints
-        if req.path().starts_with("/api-keys") {
-            let fut = self.service.call(req);
-            return Box::pin(async move {
-                let res = fut.await?;
-                Ok(res.map_into_right_body())
-            });
-        }
-
-        // Get API key from header
-        let api_key = match req.headers().get("X-API-Key") {
-            Some(key) => match key.to_str() {
-                Ok(key) => key.to_string(),
-                Err(_) => {
-                    let (req, _) = req.into_parts();
-                    return Box::pin(async move {
-                        let res = HttpResponse::Unauthorized()
-                            .json(json!({"error": "Invalid API key format"}));
-                        Ok(ServiceResponse::new(req, res).map_into_left_body())
-                    });
-                }
-            },
-            None => {
-                let (req, _) = req.into_parts();
-                return Box::pin(async move {
-                    let res =
-                        HttpResponse::Unauthorized().json(json!({"error": "Missing API key"}));
-                    Ok(ServiceResponse::new(req, res).map_into_left_body())
-                });
-            }
-        };
-
-        let fut = self.service.call(req);
+        let pool = self.pool.clone();
+        let service = self.service.clone();
 
         Box::pin(async move {
-            match crate::db::api_keys::check_and_update_rate_limit(&pool, &api_key).await {
-                Ok(true) => {
-                    let res = fut.await?;
-                    Ok(res.map_into_right_body())
-                }
-                Ok(false) => {
-                    let res = fut.await?;
-                    let (req, _) = res.into_parts();
-                    let res = HttpResponse::TooManyRequests()
-                        .json(json!({"error": "Rate limit exceeded"}));
-                    Ok(ServiceResponse::new(req, res).map_into_left_body())
-                }
-                Err(e) => {
-                    let res = fut.await?;
-                    let (req, _) = res.into_parts();
-                    let res = HttpResponse::InternalServerError()
-                        .json(json!({"error": format!("Database error: {}", e)}));
-                    Ok(ServiceResponse::new(req, res).map_into_left_body())
-                }
+            let api_key = req
+                .headers()
+                .get("X-API-Key")
+                .and_then(|h| h.to_str().ok())
+                .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing API key"))?;
+
+            // Check rate limit
+            let rate_limit_ok = sqlx::query_scalar!(
+                r#"
+                SELECT 
+                    CASE 
+                        WHEN last_request_time IS NULL 
+                            OR strftime('%s', 'now') - strftime('%s', last_request_time) >= 60 
+                        THEN 1
+                        WHEN requests_this_minute < requests_per_minute THEN 1
+                        ELSE 0
+                    END
+                FROM api_keys 
+                WHERE key = ? AND is_active = TRUE AND deleted_at IS NULL
+                "#,
+                api_key
+            )
+            .fetch_one(&pool)
+            .await
+            .map_err(|_| actix_web::error::ErrorUnauthorized("Invalid API key"))?;
+
+            if rate_limit_ok != 1 {
+                return Err(actix_web::error::ErrorTooManyRequests(
+                    "Rate limit exceeded",
+                ));
             }
+
+            // Update rate limit counters
+            sqlx::query!(
+                r#"
+                UPDATE api_keys 
+                SET 
+                    requests_this_minute = CASE 
+                        WHEN last_request_time IS NULL 
+                            OR strftime('%s', 'now') - strftime('%s', last_request_time) >= 60 
+                        THEN 1
+                        ELSE requests_this_minute + 1
+                    END,
+                    last_request_time = CURRENT_TIMESTAMP
+                WHERE key = ?
+                "#,
+                api_key
+            )
+            .execute(&pool)
+            .await
+            .map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to update rate limit")
+            })?;
+
+            // Call the service after validation
+            service.call(req).await
         })
     }
 }

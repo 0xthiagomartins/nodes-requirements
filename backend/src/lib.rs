@@ -1,6 +1,8 @@
 pub mod db;
 pub mod error;
+pub mod middleware;
 pub mod models;
+pub mod price_fetcher;
 pub mod routes;
 pub mod services;
 

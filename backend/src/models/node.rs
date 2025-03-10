@@ -12,7 +12,7 @@ pub struct Node {
     pub storage_gb: i32,
     pub network_mbps: i32,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]

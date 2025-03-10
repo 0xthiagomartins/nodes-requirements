@@ -163,3 +163,26 @@ pub async fn check_and_update_rate_limit(pool: &SqlitePool, key: &str) -> Result
     tx.commit().await.map_err(AppError::Database)?;
     Ok(true)
 }
+
+pub async fn revoke_api_key(pool: &SqlitePool, id: i64) -> Result<(), AppError> {
+    let now = Utc::now();
+    let result = sqlx::query!(
+        r#"
+        UPDATE api_keys
+        SET is_active = FALSE,
+            deleted_at = ?
+        WHERE id = ?
+        "#,
+        now,
+        id
+    )
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("API key not found".to_string()));
+    }
+
+    Ok(())
+}

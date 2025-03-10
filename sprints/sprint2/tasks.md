@@ -65,7 +65,7 @@
 - 🔴 Document API endpoints
 - 🔴 Add example requests and responses
 
-## Authentication & Security 🟢
+## Authentication & Security ✅
 
 Goal: Implement a secure API key system to:
 - Control access to the API endpoints
@@ -89,9 +89,9 @@ Tasks:
   - ✅ Implement per-key request limits
   - ✅ Add configurable time windows
   - ✅ Return 429 when limit exceeded
-- 🔴 Create key management endpoints
-  - 🔴 POST /api-keys (create new key)
-  - 🔴 DELETE /api-keys/{id} (revoke key)
+- ✅ Create key management endpoints
+  - ✅ POST /api-keys (create new key)
+  - ✅ DELETE /api-keys/{id} (revoke key)
 
 ## Error Handling 🟡
 - ✅ Create custom error types

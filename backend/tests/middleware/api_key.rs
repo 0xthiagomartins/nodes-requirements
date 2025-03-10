@@ -1,5 +1,5 @@
-use actix_web::{test, web, App, HttpResponse};
-use backend::middleware::ApiKeyMiddleware;
+use actix_web::test;
+use backend::models::CreateApiKeyRequest;
 
 use crate::common::insert_test_api_key;
 

@@ -34,7 +34,7 @@ pub async fn create_node(pool: &SqlitePool, node: CreateNodeRequest) -> Result<N
             storage_gb as "storage_gb: i32",
             network_mbps as "network_mbps: i32",
             created_at as "created_at!: DateTime<Utc>",
-            updated_at as "updated_at!: DateTime<Utc>"
+            updated_at as "updated_at?: DateTime<Utc>"
         "#,
         node.blockchain_type,
         node.cpu_cores,
@@ -64,7 +64,7 @@ pub async fn update_node(
             storage_gb as "storage_gb: i32",
             network_mbps as "network_mbps: i32",
             created_at as "created_at!: DateTime<Utc>",
-            updated_at as "updated_at!: DateTime<Utc>"
+            updated_at as "updated_at?: DateTime<Utc>"
         FROM nodes 
         WHERE id = ?
         "#,
@@ -126,7 +126,7 @@ pub async fn update_node(
             storage_gb as "storage_gb!: i32",
             network_mbps as "network_mbps!: i32",
             created_at as "created_at!: DateTime<Utc>",
-            updated_at as "updated_at!: DateTime<Utc>"
+            updated_at as "updated_at?: DateTime<Utc>"
         "#,
         blockchain_type_ref,
         update.cpu_cores,
@@ -168,13 +168,13 @@ pub async fn get_all_nodes(pool: &SqlitePool) -> Result<Vec<Node>, AppError> {
         r#"
         SELECT 
             id as "id!: i64",
-            blockchain_type as "blockchain_type!",
+            blockchain_type as "blockchain_type!: String",
             cpu_cores as "cpu_cores!: i32",
             ram_gb as "ram_gb!: i32",
             storage_gb as "storage_gb!: i32",
             network_mbps as "network_mbps!: i32",
             created_at as "created_at!: DateTime<Utc>",
-            updated_at as "updated_at!: DateTime<Utc>"
+            updated_at as "updated_at?: DateTime<Utc>"
         FROM nodes
         "#
     )
